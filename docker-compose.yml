@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: arbitrage-redis
+    command: redis-server --save "" --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    networks:
+      - arbitrage-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  ingestor:
+    build:
+      context: ./services/ingestor
+      dockerfile: Dockerfile
+    container_name: arbitrage-ingestor
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - ZMQ_ENDPOINT=tcp://0.0.0.0:5555
+      - BINANCE_ENABLED=true
+      - COINBASE_ENABLED=true
+      - HEALTH_PORT=8080
+      - LOG_LEVEL=info
+    ports:
+      - "8080:8080"
+      - "5555:5555"
+    networks:
+      - arbitrage-net
+    restart: unless-stopped
+
+  quant_engine:
+    build:
+      context: ./services/quant_engine
+      dockerfile: Dockerfile
+    container_name: arbitrage-quant
+    depends_on:
+      - redis
+      - ingestor
+    environment:
+      - ZMQ_ENDPOINT=tcp://ingestor:5555
+      - REDIS_URL=redis://redis:6379
+      - SPREAD_THRESHOLD_PCT=0.5
+      - SYMBOLS=BTC/USDT
+      - LOG_LEVEL=info
+    networks:
+      - arbitrage-net
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: ./services/dashboard
+      dockerfile: Dockerfile
+    container_name: arbitrage-dashboard
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - PORT=3000
+      - LOG_LEVEL=info
+    ports:
+      - "3000:3000"
+    networks:
+      - arbitrage-net
+    restart: unless-stopped
+
+networks:
+  arbitrage-net:
+    driver: bridge
