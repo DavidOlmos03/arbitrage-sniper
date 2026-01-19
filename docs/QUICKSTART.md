@@ -16,19 +16,31 @@ Get the arbitrage detection system running in under 5 minutes.
 
 ## Quick Start
 
-### 1. Clone & Navigate
+### 1. Navigate to Project
 ```bash
 cd arbitrage-sniper
 ```
 
 ### 2. Start All Services
+
+**Option A: Using Makefile (Recommended)**
 ```bash
-docker-compose up --build
+make up
+```
+
+**Option B: Using Docker Compose**
+```bash
+docker-compose up --build -d
 ```
 
 ### 3. Verify Services
 
-**Check health endpoints:**
+**Option A: Using health check script**
+```bash
+./health-check.sh
+```
+
+**Option B: Manual checks**
 ```bash
 # Ingestor
 curl http://localhost:8080/health
@@ -40,13 +52,19 @@ curl http://localhost:3000/api/health
 docker exec arbitrage-redis redis-cli ping
 ```
 
+**Option C: Using Makefile**
+```bash
+make health
+```
+
 ### 4. Open Dashboard
 
 Navigate to: **http://localhost:3000**
 
 You should see:
-- Live connection status
-- Real-time price feeds from Binance and Coinbase
+- Live connection status (green when connected)
+- Real-time statistics (latest spread, best opportunity, total signals)
+- Live signal feed from Binance and Coinbase
 - Arbitrage signals when spread > 0.5%
 
 ---
@@ -57,33 +75,57 @@ You should see:
 
 **Ingestor:**
 ```
-arbitrage-ingestor  | Connected to binance WebSocket
-arbitrage-ingestor  | Connected to coinbase WebSocket
-arbitrage-ingestor  | ZMQ publisher bound to tcp://0.0.0.0:5555
-arbitrage-ingestor  | Health server listening on port 8080
+arbitrage-ingestor  | === Arbitrage Sniper - Ingestor ===
+arbitrage-ingestor  | Starting WebSocket gateway...
+arbitrage-ingestor  |
+arbitrage-ingestor  | [ZMQ] Publisher bound to tcp://0.0.0.0:5555
+arbitrage-ingestor  | [Binance] Connecting...
+arbitrage-ingestor  | [Coinbase] Connecting...
+arbitrage-ingestor  | [Binance] Connected
+arbitrage-ingestor  | [Coinbase] Connected
+arbitrage-ingestor  |
+arbitrage-ingestor  | [Health] HTTP server listening on port 8080
 ```
 
 **Quant Engine:**
 ```
-arbitrage-quant     | Quant Engine started with uvloop...
-arbitrage-quant     | Connected to tcp://ingestor:5555
-arbitrage-quant     | Redis publisher ready
+arbitrage-quant     | === Arbitrage Sniper - Quant Engine ===
+arbitrage-quant     | Spread Threshold: 0.5%
+arbitrage-quant     | Symbols: ['BTC/USDT']
+arbitrage-quant     |
+arbitrage-quant     | [Redis] Connected to Redis<ConnectionPool<...>>
+arbitrage-quant     | [ZMQ] Connected to tcp://ingestor:5555
+arbitrage-quant     | [ZMQ] Starting receive loop...
+arbitrage-quant     | [Engine] Processing market data...
 ```
 
 **Dashboard:**
 ```
-arbitrage-dashboard | Subscribed to arbitrage:signals
-arbitrage-dashboard | Dashboard running on http://localhost:3000
+arbitrage-dashboard | === Arbitrage Sniper - Dashboard ===
+arbitrage-dashboard | Redis: redis://redis:6379
+arbitrage-dashboard | Port: 3000
+arbitrage-dashboard |
+arbitrage-dashboard | [Server] Dashboard running on http://localhost:3000
+arbitrage-dashboard |
+arbitrage-dashboard | [Redis] Subscriber connected
+arbitrage-dashboard | [Redis] Subscribed to arbitrage:signals
 ```
 
-### Dashboard UI
+### Live Signal Example
 
-When an arbitrage opportunity is detected:
+When an arbitrage opportunity is detected, you'll see in the quant engine logs:
+```
+arbitrage-quant | [SIGNAL] BUY_BINANCE_SELL_COINBASE @ 0.75% (Profit: $338.25)
+```
+
+And in the dashboard UI:
 ```
 BUY_BINANCE_SELL_COINBASE
 Spread: 0.75%
-Profit: $338.25
-10:15:23
+Buy Price: $45,100.00
+Sell Price: $45,438.25
+Estimated Profit: $338.25
+10:15:23 AM
 ```
 
 ---
@@ -229,6 +271,12 @@ npm start
 
 ### Watch Logs
 
+**Using Makefile:**
+```bash
+make logs
+```
+
+**Using Docker Compose:**
 ```bash
 # All services
 docker-compose logs -f
@@ -298,9 +346,51 @@ Expected:
 
 ---
 
+## Useful Commands
+
+### Using Makefile
+
+```bash
+make help      # Show all available commands
+make up        # Start all services
+make down      # Stop all services
+make restart   # Restart all services
+make logs      # View logs (all services)
+make health    # Run health check
+make clean     # Remove all containers and images
+```
+
+### Using Docker Compose
+
+```bash
+# Start services
+docker-compose up -d
+
+# Stop services
+docker-compose down
+
+# Restart services
+docker-compose restart
+
+# View logs
+docker-compose logs -f
+
+# Check status
+docker-compose ps
+```
+
+---
+
 ## Stopping Services
 
 ### Graceful Shutdown
+
+**Using Makefile:**
+```bash
+make down
+```
+
+**Using Docker Compose:**
 ```bash
 docker-compose down
 ```
@@ -314,6 +404,13 @@ docker-compose kill
 ```
 
 ### Clean Up Everything
+
+**Using Makefile:**
+```bash
+make clean
+```
+
+**Using Docker Compose:**
 ```bash
 # Stop and remove containers + volumes
 docker-compose down -v
@@ -324,27 +421,50 @@ docker-compose down --rmi all
 
 ---
 
+## Project Structure Reference
+
+```
+arbitrage-sniper/
+├── services/
+│   ├── ingestor/         # Node.js WebSocket gateway
+│   ├── quant_engine/     # Python arbitrage detector
+│   └── dashboard/        # Real-time web dashboard
+├── docs/                 # Full documentation
+├── docker-compose.yml    # Service orchestration
+├── Makefile             # Convenient commands
+├── health-check.sh      # Health check script
+└── README.md            # Main documentation
+```
+
 ## Next Steps
 
-1. **Customize Configuration**
-   - Adjust spread threshold
-   - Add more exchanges (Kraken, FTX, etc.)
-   - Change symbols (ETH/USDT, etc.)
+1. **Read Full Documentation**
+   - [README.md](../README.md) - Complete project overview
+   - [ARCHITECTURE.md](./ARCHITECTURE.md) - System design details
+   - [SERVICE_RESPONSIBILITIES.md](./SERVICE_RESPONSIBILITIES.md) - Implementation guide
+   - [DATA_FLOW.md](./DATA_FLOW.md) - Message formats and pipeline
 
-2. **Enhance Dashboard**
+2. **Customize Configuration**
+   - Adjust spread threshold in `docker-compose.yml`
+   - Add more exchanges (modify `services/ingestor/src/config.js`)
+   - Change symbols (update environment variables)
+
+3. **Enhance Dashboard**
+   - Customize UI in `services/dashboard/src/public/`
    - Add charts (Chart.js, Recharts)
    - Show historical spreads
    - Display order book depth
 
-3. **Add Monitoring**
-   - Prometheus metrics
-   - Grafana dashboards
-   - Alert notifications (Discord, Telegram)
+4. **Add Monitoring**
+   - Implement Prometheus metrics endpoint
+   - Create Grafana dashboards
+   - Add alert notifications (Discord, Telegram)
 
-4. **Optimize Performance**
+5. **Optimize Performance**
    - Profile hot paths
    - Add caching layers
    - Tune ZeroMQ parameters
+   - Implement load testing
 
 ---
 
@@ -360,27 +480,24 @@ docker-compose logs ingestor > ingestor.txt
 ```
 
 ### Health Check Summary
+
+The project includes a health check script. Run it with:
+
 ```bash
-#!/bin/bash
-echo "=== Health Check ==="
-echo "Ingestor:"
-curl -s http://localhost:8080/health | jq
-
-echo "\nDashboard:"
-curl -s http://localhost:3000/api/health | jq
-
-echo "\nRedis:"
-docker exec arbitrage-redis redis-cli ping
-
-echo "\nContainers:"
-docker-compose ps
-```
-
-Save as `health-check.sh` and run:
-```bash
-chmod +x health-check.sh
 ./health-check.sh
 ```
+
+Or use the Makefile:
+```bash
+make health
+```
+
+This will check:
+- ✓ Ingestor health and WebSocket connections
+- ✓ Dashboard health and Redis connectivity
+- ✓ Redis availability
+- ✓ Container status
+- ✓ Recent arbitrage signals
 
 ---
 
