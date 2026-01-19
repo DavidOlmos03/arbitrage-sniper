@@ -1,3 +1,4 @@
+import asyncio
 import zmq
 import zmq.asyncio
 import orjson
@@ -24,20 +25,29 @@ class ZMQReceiver:
         """
         print("[ZMQ] Starting receive loop...")
 
-        while True:
-            try:
-                message_bytes = await self.socket.recv()
-                self.message_count += 1
+        try:
+            while True:
+                try:
+                    message_bytes = await self.socket.recv()
+                    self.message_count += 1
 
-                # Fast JSON parsing with orjson
-                data = orjson.loads(message_bytes)
+                    # Fast JSON parsing with orjson
+                    data = orjson.loads(message_bytes)
 
-                # Invoke callback (non-blocking)
-                await callback(data)
+                    # Invoke callback (non-blocking)
+                    await callback(data)
 
-            except Exception as e:
-                print(f"[ZMQ] Receive error: {e}")
-                # Don't crash on errors, keep processing
+                except orjson.JSONDecodeError as e:
+                    print(f"[ZMQ] JSON decode error: {e}")
+                except Exception as e:
+                    print(f"[ZMQ] Process error: {e}")
+                    # Don't crash on errors, keep processing
+        except asyncio.CancelledError:
+            print("[ZMQ] Receive loop cancelled")
+            raise
+        except Exception as e:
+            print(f"[ZMQ] Fatal error in receive loop: {e}")
+            raise
 
     def get_stats(self):
         return {

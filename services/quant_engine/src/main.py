@@ -48,6 +48,13 @@ class QuantEngine:
             if not updated:
                 return  # Stale data, skip
 
+            # Debug: Print prices every 100 messages
+            if self.zmq_receiver.message_count % 100 == 0:
+                book = self.order_book.get_all_exchanges(data['symbol'])
+                if len(book) >= 2:
+                    prices = {ex: f"${level.bid:.2f}-${level.ask:.2f}" for ex, level in book.items()}
+                    print(f"[Debug] Prices: {prices}")
+
             # Check for arbitrage opportunity
             opportunity = self.spread_engine.find_arbitrage(data['symbol'])
 
@@ -96,20 +103,17 @@ async def main():
     """Main entry point"""
     engine = QuantEngine()
 
-    # Handle graceful shutdown
-    loop = asyncio.get_event_loop()
-
-    def signal_handler():
-        asyncio.create_task(engine.stop())
-        loop.stop()
-
-    for sig in (signal.SIGTERM, signal.SIGINT):
-        loop.add_signal_handler(sig, signal_handler)
-
     try:
         await engine.start()
     except KeyboardInterrupt:
+        print("\n[Engine] Interrupted by user")
+        await engine.stop()
+    except Exception as e:
+        print(f"\n[Engine] Error: {e}")
         await engine.stop()
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n[Engine] Shutting down...")
