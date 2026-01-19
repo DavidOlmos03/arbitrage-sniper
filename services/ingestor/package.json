@@ -1,0 +1,22 @@
+{
+  "name": "arbitrage-ingestor",
+  "version": "1.0.0",
+  "description": "WebSocket gateway for cryptocurrency exchanges",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0",
+    "zeromq": "^6.0.0-beta.19",
+    "express": "^4.18.2",
+    "dotenv": "^16.4.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
