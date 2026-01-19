@@ -3,15 +3,17 @@ const zmq = require('zeromq');
 class ZMQPublisher {
   constructor(endpoint) {
     this.endpoint = endpoint;
-    this.socket = zmq.socket('push');
+    this.socket = new zmq.Push();
     this.messageCount = 0;
     this.errorCount = 0;
+    this.bound = false;
   }
 
-  bind() {
+  async bind() {
     try {
-      this.socket.bindSync(this.endpoint);
-      this.socket.setsockopt(zmq.ZMQ_SNDHWM, 1000); // High water mark
+      await this.socket.bind(this.endpoint);
+      this.socket.sendHighWaterMark = 1000; // High water mark
+      this.bound = true;
       console.log(`[ZMQ] Publisher bound to ${this.endpoint}`);
       return true;
     } catch (error) {
@@ -20,10 +22,14 @@ class ZMQPublisher {
     }
   }
 
-  send(message) {
+  async send(message) {
+    if (!this.bound) {
+      return false;
+    }
+
     try {
       const serialized = JSON.stringify(message);
-      this.socket.send(serialized);
+      await this.socket.send(serialized);
       this.messageCount++;
       return true;
     } catch (error) {

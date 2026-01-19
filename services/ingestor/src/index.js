@@ -10,41 +10,51 @@ console.log('Starting WebSocket gateway...\n');
 
 // Initialize ZeroMQ publisher
 const zmqPublisher = new ZMQPublisher(config.zmq.endpoint);
-if (!zmqPublisher.bind()) {
-  console.error('Failed to bind ZMQ socket. Exiting.');
-  process.exit(1);
-}
+
+// Async initialization
+(async () => {
+  // Bind ZMQ socket
+  if (!await zmqPublisher.bind()) {
+    console.error('Failed to bind ZMQ socket. Exiting.');
+    process.exit(1);
+  }
+
+  // Start exchanges after ZMQ is ready
+  startExchanges();
+})();
 
 // Exchange connections
 const exchanges = {};
 
 // Message handler
-function handleExchangeMessage(rawMessage) {
+async function handleExchangeMessage(rawMessage) {
   const normalized = normalizeMessage(rawMessage.exchange, rawMessage);
 
   if (normalized) {
-    const sent = zmqPublisher.send(normalized);
+    const sent = await zmqPublisher.send(normalized);
     if (sent && config.logLevel === 'debug') {
       console.log(`[${normalized.exchange}] Price: ${normalized.price}`);
     }
   }
 }
 
-// Initialize exchanges
-if (config.exchanges.binance.enabled) {
-  exchanges.binance = new BinanceExchange(
-    config.exchanges.binance,
-    handleExchangeMessage
-  );
-  exchanges.binance.connect();
-}
+// Initialize exchanges function
+function startExchanges() {
+  if (config.exchanges.binance.enabled) {
+    exchanges.binance = new BinanceExchange(
+      config.exchanges.binance,
+      handleExchangeMessage
+    );
+    exchanges.binance.connect();
+  }
 
-if (config.exchanges.coinbase.enabled) {
-  exchanges.coinbase = new CoinbaseExchange(
-    config.exchanges.coinbase,
-    handleExchangeMessage
-  );
-  exchanges.coinbase.connect();
+  if (config.exchanges.coinbase.enabled) {
+    exchanges.coinbase = new CoinbaseExchange(
+      config.exchanges.coinbase,
+      handleExchangeMessage
+    );
+    exchanges.coinbase.connect();
+  }
 }
 
 // Health check server
