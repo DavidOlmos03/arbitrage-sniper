@@ -47,7 +47,7 @@ services:
     environment:
       - ZMQ_ENDPOINT=tcp://ingestor:5555
       - REDIS_URL=redis://redis:6379
-      - SPREAD_THRESHOLD_PCT=0.05
+      - SPREAD_THRESHOLD_PCT=0.06
       - SYMBOLS=BTC/USDT
       - LOG_LEVEL=info
     networks:
