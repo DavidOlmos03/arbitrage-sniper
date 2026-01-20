@@ -47,7 +47,7 @@ services:
     environment:
       - ZMQ_ENDPOINT=tcp://ingestor:5555
       - REDIS_URL=redis://redis:6379
-      - SPREAD_THRESHOLD_PCT=0.06
+      - SPREAD_THRESHOLD_PCT=0.1
       - SYMBOLS=BTC/USDT
       - LOG_LEVEL=info
     networks:
@@ -63,10 +63,10 @@ services:
       - redis
     environment:
       - REDIS_URL=redis://redis:6379
-      - PORT=3000
+      - PORT=3001
       - LOG_LEVEL=info
     ports:
-      - "3000:3000"
+      - "3001:3001"
     networks:
       - arbitrage-net
     restart: unless-stopped

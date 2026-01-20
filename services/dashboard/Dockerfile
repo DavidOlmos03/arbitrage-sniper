@@ -10,7 +10,7 @@ RUN npm install --omit=dev
 COPY src/ ./src/
 
 # Expose port
-EXPOSE 3000
+EXPOSE 3001
 
 # Start application
 CMD ["node", "src/index.js"]
