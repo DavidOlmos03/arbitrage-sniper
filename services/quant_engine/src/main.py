@@ -37,6 +37,12 @@ class QuantEngine:
         3. Publish signal if threshold exceeded
         """
         try:
+            import time
+
+            # Measure processing latency
+            receive_time = time.time() * 1000  # Current time in ms
+            exchange_time = data.get('timestamp', receive_time)  # Exchange timestamp
+
             # Update order book
             updated = self.order_book.update(
                 data['exchange'],
@@ -48,18 +54,34 @@ class QuantEngine:
             if not updated:
                 return  # Stale data, skip
 
-            # Debug: Print prices every 100 messages
+            # Debug: Print prices and latency every 100 messages
             if self.zmq_receiver.message_count % 100 == 0:
                 book = self.order_book.get_all_exchanges(data['symbol'])
                 if len(book) >= 2:
                     prices = {ex: f"${level.bid:.2f}-${level.ask:.2f}" for ex, level in book.items()}
+
+                    # Calculate latencies
+                    total_latency = receive_time - exchange_time
+                    processing_latency = (time.time() * 1000) - receive_time
+
                     print(f"[Debug] Prices: {prices}")
+                    print(f"[Latency] Exchange→Quant: {total_latency:.2f}ms | Processing: {processing_latency:.2f}ms")
 
             # Check for arbitrage opportunity
+            spread_start = time.time() * 1000
             opportunity = self.spread_engine.find_arbitrage(data['symbol'])
+            spread_latency = (time.time() * 1000) - spread_start
 
             if opportunity:
+                signal_start = time.time() * 1000
                 await self.signal_publisher.publish_signal(opportunity)
+                signal_latency = (time.time() * 1000) - signal_start
+
+                # Calculate end-to-end latency
+                e2e_latency = (time.time() * 1000) - exchange_time
+                internal_latency = (time.time() * 1000) - receive_time
+
+                print(f"[Latency] Spread: {spread_latency:.2f}ms | Redis: {signal_latency:.2f}ms | Internal: {internal_latency:.2f}ms | E2E: {e2e_latency:.2f}ms")
 
         except Exception as e:
             print(f"[Engine] Process error: {e}")
