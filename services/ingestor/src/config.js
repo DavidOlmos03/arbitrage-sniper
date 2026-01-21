@@ -42,7 +42,7 @@ const config = {
   exchanges: {
     binance: {
       enabled: process.env.BINANCE_ENABLED !== 'false',
-      url: 'wss://stream.binance.com:9443/ws/btcusdt@trade',
+      url: 'wss://stream.binance.com:443/ws/btcusdt@trade',
       name: 'binance'
     },
     coinbase: {
