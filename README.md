@@ -68,7 +68,7 @@ cd arbitrage-sniper
 docker-compose up --build
 
 # Open dashboard
-open http://localhost:3000
+open http://localhost:3001
 ```
 
 That's it! The system is now:
